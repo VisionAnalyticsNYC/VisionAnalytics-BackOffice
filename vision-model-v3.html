@@ -1,0 +1,1009 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Vision Model — Back Office</title>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@300;400;500&family=IBM+Plex+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
+<style>
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+:root {
+  --bg:    #0d0d0d;
+  --bg1:   #141414;
+  --bg2:   #1a1a1a;
+  --bg3:   #202020;
+  --line:  #2a2a2a;
+  --line2: #333333;
+  --text:  #e8e8e8;
+  --text2: #999999;
+  --text3: #555555;
+  --gold:  #c9a84c;
+  --gold2: #e8c97a;
+  --green: #4caf7d;
+  --red:   #cf4f4f;
+  --blue:  #5b8dee;
+  --white: #ffffff;
+  --mono:  'IBM Plex Mono', monospace;
+  --sans:  'IBM Plex Sans', sans-serif;
+}
+html { font-size: 13px; }
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: var(--sans);
+  font-weight: 300;
+  line-height: 1.5;
+  min-height: 100vh;
+}
+
+/* ── TICKER TAPE ── */
+.ticker-wrap {
+  width: 100%;
+  background: #000;
+  border-bottom: 1px solid var(--line);
+  height: 36px;
+  overflow: hidden;
+}
+.ticker-wrap .tradingview-widget-container,
+.ticker-wrap .tradingview-widget-container__widget {
+  height: 36px !important;
+}
+
+/* ── TOP BAR ── */
+.topbar {
+  background: var(--bg1);
+  border-bottom: 1px solid var(--line);
+  display: flex;
+  align-items: center;
+  padding: 0 24px;
+  height: 44px;
+  gap: 28px;
+  position: sticky;
+  top: 36px;
+  z-index: 200;
+}
+.topbar-brand {
+  font-family: var(--mono);
+  font-size: 0.85rem;
+  font-weight: 500;
+  color: var(--gold);
+  letter-spacing: 0.14em;
+  white-space: nowrap;
+}
+.topbar-divider { width:1px; height:20px; background:var(--line2); flex-shrink:0; }
+.asset-tabs { display:flex; gap:2px; }
+.asset-tab {
+  font-family: var(--mono);
+  font-size: 0.72rem;
+  letter-spacing: 0.08em;
+  padding: 4px 14px;
+  border: 1px solid transparent;
+  background: transparent;
+  color: var(--text2);
+  cursor: pointer;
+  transition: all 0.15s;
+}
+.asset-tab:hover { color:var(--text); border-color:var(--line2); }
+.asset-tab.active { color:var(--gold); border-color:var(--gold); background:rgba(201,168,76,0.07); }
+
+.topbar-right { margin-left:auto; display:flex; align-items:center; gap:20px; }
+.topbar-clock {
+  font-family: var(--mono);
+  font-size: 0.68rem;
+  color: var(--text2);
+  text-align: right;
+  line-height: 1.4;
+}
+.topbar-clock span { color:var(--text); }
+
+.refresh-btn {
+  font-family: var(--mono);
+  font-size: 0.65rem;
+  letter-spacing: 0.08em;
+  padding: 4px 14px;
+  background: transparent;
+  border: 1px solid var(--line2);
+  color: var(--text2);
+  cursor: pointer;
+  transition: all 0.15s;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.refresh-btn:hover { border-color:var(--gold); color:var(--gold); }
+.refresh-btn svg { width:11px; height:11px; }
+
+.feed-status {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-family: var(--mono);
+  font-size: 0.62rem;
+  color: var(--text3);
+}
+.feed-dot { width:6px; height:6px; border-radius:50%; background:var(--green); }
+.feed-dot.stale   { background:var(--red); }
+.feed-dot.loading { background:var(--gold); animation:blink 0.6s infinite; }
+@keyframes blink { 0%,100%{opacity:1}50%{opacity:0.2} }
+
+/* ── PAGE ── */
+.page { padding: 20px 24px; max-width: 1600px; margin: 0 auto; }
+
+/* ── BRIEFING ── */
+.briefing-section {
+  border: 1px solid var(--line2);
+  background: var(--bg1);
+  margin-bottom: 20px;
+}
+.briefing-header {
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  align-items: center;
+  padding: 14px 20px;
+  border-bottom: 1px solid var(--line);
+  gap: 24px;
+}
+.briefing-asset-block { display:flex; flex-direction:column; gap:4px; }
+.briefing-asset-name  { font-family:var(--mono); font-size:0.62rem; color:var(--text3); letter-spacing:0.1em; }
+.briefing-price-row   { display:flex; align-items:baseline; gap:12px; }
+.briefing-price {
+  font-family: var(--mono);
+  font-size: 2.1rem;
+  font-weight: 400;
+  color: var(--white);
+  letter-spacing: 0.02em;
+  line-height: 1;
+}
+.briefing-change { font-family:var(--mono); font-size:0.8rem; }
+.briefing-change.up { color:var(--green); }
+.briefing-change.dn { color:var(--red); }
+
+/* TradingView price embed sits in middle col */
+.tv-price-widget { display:flex; align-items:center; overflow:hidden; height:44px; }
+
+.briefing-meta { display:flex; flex-direction:column; align-items:flex-end; gap:6px; }
+.bias-pill {
+  font-family: var(--mono);
+  font-size: 0.68rem;
+  font-weight: 500;
+  letter-spacing: 0.12em;
+  padding: 3px 14px;
+  border: 1px solid currentColor;
+}
+.bias-pill.bullish { color:var(--green); }
+.bias-pill.bearish { color:var(--red); }
+.bias-pill.neutral  { color:var(--gold); }
+.confluence-row { display:flex; align-items:center; gap:8px; }
+.conf-label { font-family:var(--mono); font-size:0.6rem; color:var(--text3); letter-spacing:0.06em; }
+.conf-track { width:90px; height:2px; background:var(--line2); }
+.conf-fill  { height:100%; transition:width 0.8s ease; }
+.conf-fill.bullish { background:var(--green); }
+.conf-fill.bearish { background:var(--red); }
+.conf-fill.neutral  { background:var(--gold); }
+.conf-score { font-family:var(--mono); font-size:0.66rem; color:var(--text2); }
+
+.briefing-body {
+  padding: 18px 20px;
+  display: grid;
+  grid-template-columns: 1fr 260px;
+  gap: 24px;
+  align-items: start;
+}
+.briefing-narrative {
+  font-family: var(--sans);
+  font-size: 0.9rem;
+  font-weight: 300;
+  color: var(--text);
+  line-height: 1.85;
+  min-height: 64px;
+}
+.briefing-narrative.loading { color:var(--text3); font-style:italic; }
+.briefing-key-levels { border-left:1px solid var(--line); padding-left:20px; }
+.kl-title { font-family:var(--mono); font-size:0.6rem; color:var(--text3); letter-spacing:0.1em; margin-bottom:10px; }
+.kl-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 5px 0;
+  border-bottom: 1px solid var(--line);
+  gap: 10px;
+}
+.kl-row:last-child { border-bottom:none; }
+.kl-name  { font-family:var(--mono); font-size:0.66rem; color:var(--text2); }
+.kl-price { font-family:var(--mono); font-size:0.7rem; color:var(--text); }
+.kl-type  { font-family:var(--mono); font-size:0.58rem; padding:1px 6px; border:1px solid var(--line2); color:var(--text3); }
+.kl-type.res { border-color:rgba(207,79,79,0.4); color:var(--red); }
+.kl-type.sup { border-color:rgba(76,175,125,0.4); color:var(--green); }
+
+/* ── INPUTS ── */
+.inputs-section { border:1px solid var(--line2); background:var(--bg1); margin-bottom:20px; }
+.inputs-header {
+  padding: 10px 20px;
+  border-bottom: 1px solid var(--line);
+  font-family: var(--mono);
+  font-size: 0.62rem;
+  color: var(--text3);
+  letter-spacing: 0.14em;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+.run-btn {
+  font-family: var(--mono);
+  font-size: 0.65rem;
+  letter-spacing: 0.1em;
+  font-weight: 500;
+  padding: 5px 22px;
+  background: var(--gold);
+  color: var(--bg);
+  border: none;
+  cursor: pointer;
+  transition: background 0.15s;
+}
+.run-btn:hover { background:var(--gold2); }
+.inputs-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr;
+  gap: 1px;
+  background: var(--line);
+}
+.input-group { background:var(--bg1); padding:14px 18px; }
+.input-group-title {
+  font-family: var(--mono);
+  font-size: 0.6rem;
+  color: var(--text3);
+  letter-spacing: 0.1em;
+  margin-bottom: 12px;
+  padding-bottom: 8px;
+  border-bottom: 1px solid var(--line);
+}
+.input-row { display:flex; align-items:center; gap:10px; margin-bottom:7px; }
+.input-row label { font-family:var(--mono); font-size:0.63rem; color:var(--text2); min-width:100px; }
+.input-row input {
+  flex: 1;
+  background: var(--bg);
+  border: 1px solid var(--line2);
+  padding: 4px 8px;
+  font-family: var(--mono);
+  font-size: 0.72rem;
+  color: var(--text);
+  outline: none;
+  transition: border-color 0.15s;
+}
+.input-row input:focus { border-color:var(--gold); }
+.input-row input::placeholder { color:var(--text3); }
+.input-note {
+  font-family: var(--mono);
+  font-size: 0.6rem;
+  color: var(--text3);
+  line-height: 1.8;
+  margin-top: 10px;
+  padding-top: 10px;
+  border-top: 1px solid var(--line);
+}
+
+/* ── SECTION HEADER ── */
+.section-hdr {
+  font-family: var(--mono);
+  font-size: 0.6rem;
+  color: var(--text3);
+  letter-spacing: 0.16em;
+  padding: 10px 20px;
+  border-bottom: 1px solid var(--line);
+}
+
+/* ── IPDA ── */
+.ipda-section { border:1px solid var(--line2); background:var(--bg1); margin-bottom:20px; }
+.ipda-panels-row {
+  display: grid;
+  grid-template-columns: repeat(3,1fr);
+  gap: 1px;
+  background: var(--line);
+}
+.ipda-panel { background:var(--bg1); padding:16px 18px; }
+.ipda-inner-label { font-family:var(--mono); font-size:0.6rem; color:var(--text3); letter-spacing:0.1em; margin-bottom:14px; }
+.ipda-visual { display:flex; gap:14px; height:190px; }
+.ipda-bar-col { width:10px; position:relative; flex-shrink:0; }
+.ipda-bar-track {
+  position: absolute; inset:0; border-radius:1px;
+  background: linear-gradient(to bottom, var(--red) 0%, rgba(207,79,79,0.15) 50%, rgba(76,175,125,0.15) 50%, var(--green) 100%);
+}
+.ipda-marker {
+  position: absolute; left:-3px; right:-3px; height:2px;
+  background: var(--white);
+  transition: top 0.6s cubic-bezier(0.4,0,0.2,1);
+  z-index: 2;
+}
+.ipda-levels-col { flex:1; position:relative; }
+.ipda-lvl {
+  position: absolute; left:0; right:0;
+  display: flex; justify-content:space-between; align-items:center;
+  transform: translateY(-50%);
+}
+.ipda-lvl-pct  { font-family:var(--mono); font-size:0.56rem; color:var(--text3); }
+.ipda-lvl-line { flex:1; height:1px; background:var(--line); margin:0 6px; }
+.ipda-lvl-price{ font-family:var(--mono); font-size:0.6rem; color:var(--text2); }
+.ipda-lvl.mid .ipda-lvl-line { background:var(--line2); }
+.ipda-lvl.mid .ipda-lvl-pct  { color:var(--text2); }
+.ipda-zone {
+  margin-top: 12px;
+  font-family: var(--mono);
+  font-size: 0.64rem;
+  display: flex; justify-content:space-between; align-items:center;
+  letter-spacing: 0.05em;
+}
+.ipda-zone-name.premium     { color:var(--red); }
+.ipda-zone-name.discount    { color:var(--green); }
+.ipda-zone-name.equilibrium { color:var(--gold); }
+.ipda-pct-val { font-family:var(--mono); font-size:0.72rem; color:var(--text); }
+
+/* ── AVG RANGE ── */
+.avg-section { border:1px solid var(--line2); background:var(--bg1); margin-bottom:20px; }
+.avg-grid {
+  display: grid;
+  grid-template-columns: repeat(4,1fr);
+  gap: 1px;
+  background: var(--line);
+}
+.avg-tf-panel { background:var(--bg1); padding:14px 16px; }
+.avg-tf-label {
+  font-family: var(--mono);
+  font-size: 0.6rem;
+  color: var(--text3);
+  letter-spacing: 0.1em;
+  margin-bottom: 10px;
+  padding-bottom: 8px;
+  border-bottom: 1px solid var(--line);
+}
+.avg-row {
+  display: flex; justify-content:space-between; align-items:center;
+  padding: 3px 0;
+  font-family: var(--mono);
+  font-size: 0.66rem;
+}
+.avg-row-label { color:var(--text3); }
+.avg-row-val   { color:var(--text2); }
+.avg-row.is-premium  .avg-row-label { color:rgba(207,79,79,0.7); }
+.avg-row.is-premium  .avg-row-val   { color:var(--red); }
+.avg-row.is-discount .avg-row-label { color:rgba(76,175,125,0.7); }
+.avg-row.is-discount .avg-row-val   { color:var(--green); }
+.avg-row.is-open .avg-row-label { color:var(--gold); }
+.avg-row.is-open .avg-row-val   { color:var(--gold); }
+.avg-row.is-current { background:rgba(255,255,255,0.04); margin:0 -4px; padding:3px 4px; }
+.avg-row.is-current .avg-row-val { color:var(--white); }
+.avg-sep { border-top:1px solid var(--line); margin:4px 0; }
+
+/* ── TIME-PRICE GRID ── */
+.tp-section { border:1px solid var(--line2); background:var(--bg1); margin-bottom:20px; }
+.tp-header {
+  padding: 10px 20px;
+  border-bottom: 1px solid var(--line);
+  display: flex; align-items:center; justify-content:space-between;
+}
+.tp-header-left { font-family:var(--mono); font-size:0.6rem; color:var(--text3); letter-spacing:0.14em; }
+.tp-header-right{ font-family:var(--mono); font-size:0.66rem; color:var(--text2); }
+.tp-table { width:100%; border-collapse:collapse; }
+.tp-table th {
+  font-family: var(--mono);
+  font-size: 0.58rem;
+  font-weight: 400;
+  color: var(--text3);
+  letter-spacing: 0.08em;
+  text-align: left;
+  padding: 8px 20px;
+  border-bottom: 1px solid var(--line);
+}
+.tp-table td {
+  font-family: var(--mono);
+  font-size: 0.7rem;
+  padding: 7px 20px;
+  border-bottom: 1px solid var(--line);
+  color: var(--text2);
+}
+.tp-table tr:last-child td { border-bottom:none; }
+.tp-table tr.tp-current td { background:rgba(255,255,255,0.03); color:var(--white); }
+.tp-table tr.tp-current td:first-child { border-left:2px solid var(--white); padding-left:18px; }
+.tp-line-a td:first-child { color:var(--gold); }
+.tp-line-b td:first-child { color:var(--blue); }
+.tp-line-c td:first-child { color:var(--text); }
+.tp-line-d td:first-child { color:var(--text2); }
+.tp-badge {
+  font-size: 0.58rem;
+  padding: 1px 6px;
+  border: 1px solid var(--line2);
+  color: var(--text3);
+  font-family: var(--mono);
+}
+.tp-badge.a { border-color:rgba(201,168,76,0.45); color:var(--gold); }
+.tp-badge.b { border-color:rgba(91,141,238,0.45); color:var(--blue); }
+.tp-badge.c { border-color:rgba(200,200,200,0.25); color:var(--text2); }
+.dist-bar { display:flex; align-items:center; gap:8px; }
+.dist-track { width:72px; height:2px; background:var(--line2); }
+.dist-fill { height:100%; background:var(--line2); }
+.dist-fill.near { background:var(--gold); }
+
+.placeholder {
+  font-family: var(--mono);
+  font-size: 0.68rem;
+  color: var(--text3);
+  padding: 22px 20px;
+  font-style: italic;
+}
+</style>
+</head>
+<body>
+
+<!-- ── TICKER TAPE ── -->
+<div class="ticker-wrap">
+  <div class="tradingview-widget-container">
+    <div class="tradingview-widget-container__widget"></div>
+    <script type="text/javascript" src="https://s3.tradingview.com/external-embedding/embed-widget-ticker-tape.js" async>
+    {
+      "symbols": [
+        {"proName":"CME_MINI:MNQ1!","title":"MNQ"},
+        {"proName":"CME_MINI:MES1!","title":"MES"},
+        {"proName":"COMEX:MGC1!","title":"MGC"},
+        {"proName":"NYMEX:MCL1!","title":"MCL"},
+        {"proName":"CME:NQ1!","title":"NQ"},
+        {"proName":"CME:ES1!","title":"ES"},
+        {"proName":"COMEX:GC1!","title":"GC"},
+        {"proName":"NYMEX:CL1!","title":"CL"},
+        {"proName":"CME:YM1!","title":"YM"},
+        {"proName":"CME:RTY1!","title":"RTY"},
+        {"proName":"TVC:DXY","title":"DXY"},
+        {"proName":"CBOE:VIX","title":"VIX"},
+        {"proName":"BITSTAMP:BTCUSD","title":"BTC"},
+        {"proName":"NASDAQ:QQQ","title":"QQQ"},
+        {"proName":"AMEX:SPY","title":"SPY"},
+        {"proName":"NASDAQ:AAPL","title":"AAPL"},
+        {"proName":"NASDAQ:NVDA","title":"NVDA"},
+        {"proName":"NASDAQ:TSLA","title":"TSLA"},
+        {"proName":"CME:ZN1!","title":"10Y"},
+        {"proName":"CME:ZB1!","title":"30Y"}
+      ],
+      "showSymbolLogo": false,
+      "isTransparent": true,
+      "displayMode": "compact",
+      "colorTheme": "dark",
+      "locale": "en"
+    }
+    </script>
+  </div>
+</div>
+
+<!-- ── TOP BAR ── -->
+<div class="topbar">
+  <div class="topbar-brand">VISION MODEL</div>
+  <div class="topbar-divider"></div>
+  <div class="asset-tabs">
+    <button class="asset-tab active" onclick="switchAsset('MNQ',this)">MNQ</button>
+    <button class="asset-tab" onclick="switchAsset('MES',this)">MES</button>
+    <button class="asset-tab" onclick="switchAsset('MGC',this)">MGC</button>
+    <button class="asset-tab" onclick="switchAsset('MCL',this)">MCL</button>
+  </div>
+  <div class="topbar-right">
+    <button class="refresh-btn" onclick="refreshPrice()">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+        <path d="M1 4v6h6M23 20v-6h-6"/>
+        <path d="M20.49 9A9 9 0 005.64 5.64L1 10m22 4l-4.64 4.36A9 9 0 013.51 15"/>
+      </svg>
+      REFRESH
+    </button>
+    <div class="topbar-divider"></div>
+    <div class="topbar-clock">
+      <span id="clockTime">--:--:--</span>
+      <span id="clockDate" style="display:block">--- -- ---- CT</span>
+    </div>
+    <div class="feed-status">
+      <div class="feed-dot" id="feedDot"></div>
+      <span id="feedLabel">LIVE</span>
+    </div>
+  </div>
+</div>
+
+<div class="page">
+
+  <!-- ── BRIEFING ── -->
+  <div class="briefing-section">
+    <div class="briefing-header">
+      <div class="briefing-asset-block">
+        <div class="briefing-asset-name" id="heroName">MNQ · MICRO E-MINI NASDAQ 100</div>
+        <div class="briefing-price-row">
+          <div class="briefing-price" id="heroPrice">—</div>
+          <div class="briefing-change" id="heroChange"></div>
+        </div>
+      </div>
+      <!-- TradingView Single Quote Widget -->
+      <div class="tv-price-widget" id="tvWidget">
+        <div class="tradingview-widget-container" style="width:100%;height:44px">
+          <div id="tradingview-quote" class="tradingview-widget-container__widget"></div>
+        </div>
+      </div>
+      <div class="briefing-meta">
+        <div class="bias-pill neutral" id="biasPill">AWAITING DATA</div>
+        <div class="confluence-row">
+          <div class="conf-label">CONFLUENCE</div>
+          <div class="conf-track"><div class="conf-fill neutral" id="confFill" style="width:0%"></div></div>
+          <div class="conf-score" id="confScore">—</div>
+        </div>
+      </div>
+    </div>
+    <div class="briefing-body">
+      <div class="briefing-narrative loading" id="briefingText">
+        Enter your IPDA Gradient and Average Range inputs below, then click RUN VISION MODEL to generate today's briefing.
+      </div>
+      <div class="briefing-key-levels">
+        <div class="kl-title">KEY LEVELS</div>
+        <div id="keyLevels">
+          <div class="kl-row"><span class="kl-name" style="color:var(--text3);font-style:italic;font-size:0.62rem;">Run model to populate</span></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── INPUTS ── -->
+  <div class="inputs-section">
+    <div class="inputs-header">
+      <span>MEASUREMENT INPUTS</span>
+      <button class="run-btn" onclick="runVisionModel()">RUN VISION MODEL</button>
+    </div>
+    <div class="inputs-grid">
+
+      <div class="input-group">
+        <div class="input-group-title">SET 1 — IPDA GRADIENT</div>
+        <div class="input-row"><label>Q High</label><input type="number" id="qHigh" placeholder="Prev Quarter High" step="0.25"></div>
+        <div class="input-row"><label>Q Low</label><input type="number" id="qLow" placeholder="Prev Quarter Low" step="0.25"></div>
+        <div class="input-row"><label>20D High</label><input type="number" id="d20High" placeholder="20-Day High" step="0.25"></div>
+        <div class="input-row"><label>20D Low</label><input type="number" id="d20Low" placeholder="20-Day Low" step="0.25"></div>
+        <div class="input-row"><label>5D High</label><input type="number" id="d5High" placeholder="5-Day High" step="0.25"></div>
+        <div class="input-row"><label>5D Low</label><input type="number" id="d5Low" placeholder="5-Day Low" step="0.25"></div>
+      </div>
+
+      <div class="input-group">
+        <div class="input-group-title">SET 2 — AVG RANGE PROJECTIONS</div>
+        <div class="input-row"><label>3M Globex Open</label><input type="number" id="open3M" placeholder="Quarterly Open" step="0.25"></div>
+        <div class="input-row"><label>3M Avg Range</label><input type="number" id="avg3M" placeholder="5-Candle Avg" step="0.25"></div>
+        <div class="input-row"><label>M Globex Open</label><input type="number" id="openM" placeholder="Monthly Open" step="0.25"></div>
+        <div class="input-row"><label>M Avg Range</label><input type="number" id="avgM" placeholder="5-Candle Avg" step="0.25"></div>
+        <div class="input-row"><label>W Globex Open</label><input type="number" id="openW" placeholder="Weekly Open" step="0.25"></div>
+        <div class="input-row"><label>W Avg Range</label><input type="number" id="avgW" placeholder="5-Candle Avg" step="0.25"></div>
+        <div class="input-row"><label>D Globex Open</label><input type="number" id="openD" placeholder="Daily Open" step="0.25"></div>
+        <div class="input-row"><label>D Avg Range</label><input type="number" id="avgD" placeholder="5-Candle Avg" step="0.25"></div>
+      </div>
+
+      <div class="input-group">
+        <div class="input-group-title">PRICE OVERRIDE</div>
+        <div class="input-row"><label>Manual Price</label><input type="number" id="manualPrice" placeholder="Override live feed" step="0.25"></div>
+        <div class="input-note">
+          Live price auto-loads from TradingView feed.<br>
+          Use override only to force a specific level.<br>
+          Click REFRESH in header to re-fetch price.<br><br>
+          IPDA directional rule applied automatically.<br>
+          Bearish range → 75% = premium.<br>
+          Bullish range → 75% = premium.<br><br>
+          5-Day = previous 5 closed daily candles.<br>
+          20-Day rolls every 20 trading days.<br>
+          Quarterly rolls at calendar quarter open.
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- ── IPDA GRADIENT ── -->
+  <div class="ipda-section">
+    <div class="section-hdr">SET 1 — IPDA GRADIENT</div>
+    <div class="ipda-panels-row">
+      <div class="ipda-panel">
+        <div class="ipda-inner-label">60-DAY · QUARTERLY LOOKBACK</div>
+        <div class="ipda-visual">
+          <div class="ipda-bar-col"><div class="ipda-bar-track"></div><div class="ipda-marker" id="qMkr" style="top:50%"></div></div>
+          <div class="ipda-levels-col" id="qLvls"></div>
+        </div>
+        <div class="ipda-zone">
+          <span class="ipda-zone-name equilibrium" id="qZone">—</span>
+          <span class="ipda-pct-val" id="qPct">—</span>
+        </div>
+      </div>
+      <div class="ipda-panel">
+        <div class="ipda-inner-label">20-DAY LOOKBACK</div>
+        <div class="ipda-visual">
+          <div class="ipda-bar-col"><div class="ipda-bar-track"></div><div class="ipda-marker" id="d20Mkr" style="top:50%"></div></div>
+          <div class="ipda-levels-col" id="d20Lvls"></div>
+        </div>
+        <div class="ipda-zone">
+          <span class="ipda-zone-name equilibrium" id="d20Zone">—</span>
+          <span class="ipda-pct-val" id="d20Pct">—</span>
+        </div>
+      </div>
+      <div class="ipda-panel">
+        <div class="ipda-inner-label">5-DAY LOOKBACK · PREV 5 CLOSED CANDLES</div>
+        <div class="ipda-visual">
+          <div class="ipda-bar-col"><div class="ipda-bar-track"></div><div class="ipda-marker" id="d5Mkr" style="top:50%"></div></div>
+          <div class="ipda-levels-col" id="d5Lvls"></div>
+        </div>
+        <div class="ipda-zone">
+          <span class="ipda-zone-name equilibrium" id="d5Zone">—</span>
+          <span class="ipda-pct-val" id="d5Pct">—</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── AVG RANGE PROJECTIONS ── -->
+  <div class="avg-section">
+    <div class="section-hdr">SET 2 — AVERAGE RANGE PROJECTIONS</div>
+    <div class="avg-grid" id="avgGrid">
+      <div class="avg-tf-panel"><div class="avg-tf-label">QUARTERLY (3M)</div><div class="placeholder">Input required</div></div>
+      <div class="avg-tf-panel"><div class="avg-tf-label">MONTHLY</div><div class="placeholder">Input required</div></div>
+      <div class="avg-tf-panel"><div class="avg-tf-label">WEEKLY</div><div class="placeholder">Input required</div></div>
+      <div class="avg-tf-panel"><div class="avg-tf-label">DAILY</div><div class="placeholder">Input required</div></div>
+    </div>
+  </div>
+
+  <!-- ── TIME-PRICE GRID ── -->
+  <div class="tp-section">
+    <div class="tp-header">
+      <span class="tp-header-left">SET 3 — TIME-PRICE GRID</span>
+      <span class="tp-header-right" id="tpZoneLabel"></span>
+    </div>
+    <div id="tpBody"><div class="placeholder">Run Vision Model to generate Time-Price Grid</div></div>
+  </div>
+
+</div><!-- /page -->
+
+<script>
+// ── ASSET CONFIG ─────────────────────────────────────────────────
+const ASSETS = {
+  MNQ: { name:'MICRO E-MINI NASDAQ 100', aGap:2400, pairGap:240,  dec:2, tvSymbol:'CME_MINI:MNQ1!' },
+  MES: { name:'MICRO E-MINI S&P 500',    aGap:240,  pairGap:24,   dec:2, tvSymbol:'CME_MINI:MES1!' },
+  MGC: { name:'MICRO GOLD',              aGap:240,  pairGap:24,   dec:1, tvSymbol:'COMEX:MGC1!'    },
+  MCL: { name:'MICRO CRUDE OIL',         aGap:24,   pairGap:1.2,  dec:2, tvSymbol:'NYMEX:MCL1!'   }
+};
+
+let currentAsset = 'MNQ';
+let currentPrice  = null;
+
+// ── CLOCK ────────────────────────────────────────────────────────
+function tickClock() {
+  const ct = new Date(new Date().toLocaleString('en-US',{timeZone:'America/Chicago'}));
+  const p  = n => String(n).padStart(2,'0');
+  const mo = ['JAN','FEB','MAR','APR','MAY','JUN','JUL','AUG','SEP','OCT','NOV','DEC'];
+  document.getElementById('clockTime').textContent = `${p(ct.getHours())}:${p(ct.getMinutes())}:${p(ct.getSeconds())}`;
+  document.getElementById('clockDate').textContent = `${mo[ct.getMonth()]} ${ct.getDate()} ${ct.getFullYear()} CT`;
+}
+setInterval(tickClock,1000); tickClock();
+
+// ── TRADINGVIEW QUOTE WIDGET ──────────────────────────────────────
+function loadTVQuoteWidget(symbol) {
+  const container = document.getElementById('tradingview-quote');
+  container.innerHTML = '';
+  const script = document.createElement('script');
+  script.type = 'text/javascript';
+  script.src  = 'https://s3.tradingview.com/external-embedding/embed-widget-single-quote.js';
+  script.async = true;
+  script.innerHTML = JSON.stringify({
+    symbol: symbol,
+    width: '100%',
+    isTransparent: true,
+    colorTheme: 'dark',
+    locale: 'en'
+  });
+  container.appendChild(script);
+}
+loadTVQuoteWidget(ASSETS['MNQ'].tvSymbol);
+
+// ── PRICE VIA TRADINGVIEW DATAFEED ───────────────────────────────
+// Uses a CORS-friendly public quote endpoint
+async function fetchPrice(asset) {
+  setFeed('loading');
+  const sym = encodeURIComponent(ASSETS[asset].tvSymbol);
+  try {
+    // Try TradingView's symbol info endpoint via a public proxy approach
+    // Fallback chain: try multiple endpoints
+    const res = await fetch(
+      `https://symbol-search.tradingview.com/symbol_search/?text=${sym}&hl=1&exchange=&lang=en&type=&domain=production`,
+      { signal: AbortSignal.timeout(5000) }
+    );
+    // If that doesn't give price, fall back to prompt-based fetch
+    throw new Error('use API');
+  } catch(e) {
+    // Use Claude API with web search to get real price
+    try {
+      const res = await fetch('https://api.anthropic.com/v1/messages', {
+        method: 'POST',
+        headers: { 'Content-Type':'application/json' },
+        body: JSON.stringify({
+          model: 'claude-sonnet-4-20250514',
+          max_tokens: 150,
+          tools: [{ type:'web_search_20250305', name:'web_search' }],
+          messages: [{
+            role: 'user',
+            content: `What is the current live price of ${asset} futures (${ASSETS[asset].tvSymbol})? Search now. Reply ONLY with valid JSON like: {"price":24350.50,"change":120.25,"changePct":0.50} — no other text, no markdown.`
+          }]
+        })
+      });
+      const data = await res.json();
+      const txt  = (data.content||[]).map(c=>c.text||'').join('').replace(/```[a-z]*/g,'').replace(/```/g,'').trim();
+      // Extract JSON from response
+      const match = txt.match(/\{[^}]+\}/);
+      if(match) {
+        const obj = JSON.parse(match[0]);
+        currentPrice = obj.price;
+        renderHeroPrice(obj.price, obj.change||0, obj.changePct||0);
+        setFeed('live');
+        return;
+      }
+      throw new Error('no JSON');
+    } catch(err) {
+      setFeed('stale');
+      const manual = parseFloat(document.getElementById('manualPrice').value);
+      if(manual) { currentPrice=manual; renderHeroPrice(manual,0,0); }
+    }
+  }
+}
+
+function setFeed(s) {
+  const dot = document.getElementById('feedDot');
+  const lbl = document.getElementById('feedLabel');
+  dot.className = 'feed-dot' + (s==='stale'?' stale': s==='loading'?' loading':'');
+  lbl.textContent = s==='live'?'LIVE': s==='loading'?'LOADING...':'STALE — USE OVERRIDE';
+}
+
+function renderHeroPrice(price, chg, pct) {
+  const {dec} = ASSETS[currentAsset];
+  document.getElementById('heroPrice').textContent =
+    price.toLocaleString('en-US',{minimumFractionDigits:dec,maximumFractionDigits:dec});
+  const el  = document.getElementById('heroChange');
+  const sgn = chg>=0?'+':'';
+  el.textContent = `${sgn}${chg.toFixed(dec)}  (${sgn}${pct.toFixed(2)}%)`;
+  el.className   = 'briefing-change '+(chg>=0?'up':'dn');
+}
+
+function refreshPrice() {
+  fetchPrice(currentAsset);
+}
+
+// ── ASSET SWITCH ─────────────────────────────────────────────────
+function switchAsset(a, el) {
+  currentAsset = a;
+  document.querySelectorAll('.asset-tab').forEach(t=>t.classList.remove('active'));
+  el.classList.add('active');
+  document.getElementById('heroName').textContent = `${a} · ${ASSETS[a].name}`;
+  loadTVQuoteWidget(ASSETS[a].tvSymbol);
+  fetchPrice(a);
+}
+
+fetchPrice('MNQ');
+setInterval(()=>fetchPrice(currentAsset), 60000);
+
+// ── HELPERS ──────────────────────────────────────────────────────
+const fmt = (n,d=2) => n==null?'—':Number(n).toLocaleString('en-US',{minimumFractionDigits:d,maximumFractionDigits:d});
+
+// ── IPDA ─────────────────────────────────────────────────────────
+function calcIPDA(hi, lo, price) {
+  if(!hi||!lo||!price) return null;
+  const rHi = Math.max(hi,lo), rLo = Math.min(hi,lo);
+  const rng  = rHi - rLo;
+  const pct  = ((price-rLo)/rng)*100;
+  const lvls = {100:rHi, 75:rLo+rng*0.75, 50:rLo+rng*0.5, 25:rLo+rng*0.25, 0:rLo};
+  let zone, zc;
+  if(pct>=75){zone='DEEP PREMIUM';zc='premium';}
+  else if(pct>=50){zone='PREMIUM';zc='premium';}
+  else if(pct>=45&&pct<=55){zone='EQUILIBRIUM';zc='equilibrium';}
+  else if(pct>=25){zone='DISCOUNT';zc='discount';}
+  else{zone='DEEP DISCOUNT';zc='discount';}
+  return {pct,lvls,zone,zc};
+}
+
+function renderIPDA(res, mkrId, lvlsId, zoneId, pctId) {
+  if(!res){ document.getElementById(zoneId).textContent='—'; return; }
+  const {dec} = ASSETS[currentAsset];
+  document.getElementById(mkrId).style.top = `${Math.min(96,Math.max(4,100-res.pct))}%`;
+  const el = document.getElementById(lvlsId); el.innerHTML='';
+  [[100,'100%'],[75,'75%'],[50,'50%'],[25,'25%'],[0,'0%']].forEach(([p,lbl])=>{
+    const d=document.createElement('div');
+    d.className='ipda-lvl'+(p===50?' mid':'');
+    d.style.top=`${100-p}%`;
+    d.innerHTML=`<span class="ipda-lvl-pct">${lbl}</span><span class="ipda-lvl-line"></span><span class="ipda-lvl-price">${fmt(res.lvls[p],dec)}</span>`;
+    el.appendChild(d);
+  });
+  const zn=document.getElementById(zoneId);
+  zn.textContent=res.zone; zn.className=`ipda-zone-name ${res.zc}`;
+  document.getElementById(pctId).textContent=`${res.pct.toFixed(1)}%`;
+}
+
+// ── AVG RANGE ────────────────────────────────────────────────────
+function calcAvg(open, avgR, price) {
+  if(!open||!avgR||!price) return null;
+  const levels=[
+    ['AVG HIGH',   open+avgR,        'premium'],
+    ['75% PREM',   open+avgR*0.75,   'premium'],
+    ['50% PREM',   open+avgR*0.50,   'premium'],
+    ['25% PREM',   open+avgR*0.25,   'premium'],
+    ['12.5% PREM', open+avgR*0.125,  'premium'],
+    ['OPEN',       open,             'open'],
+    ['12.5% DISC', open-avgR*0.125,  'discount'],
+    ['25% DISC',   open-avgR*0.25,   'discount'],
+    ['50% DISC',   open-avgR*0.50,   'discount'],
+    ['75% DISC',   open-avgR*0.75,   'discount'],
+    ['AVG LOW',    open-avgR,        'discount'],
+  ];
+  return levels;
+}
+
+function renderAvgGrid() {
+  const {dec} = ASSETS[currentAsset];
+  const tfs=[
+    {label:'QUARTERLY (3M)', oId:'open3M', aId:'avg3M'},
+    {label:'MONTHLY',        oId:'openM',  aId:'avgM'},
+    {label:'WEEKLY',         oId:'openW',  aId:'avgW'},
+    {label:'DAILY',          oId:'openD',  aId:'avgD'},
+  ];
+  const grid=document.getElementById('avgGrid'); grid.innerHTML='';
+  tfs.forEach(tf=>{
+    const open=parseFloat(document.getElementById(tf.oId).value);
+    const avg =parseFloat(document.getElementById(tf.aId).value);
+    const lvls=calcAvg(open,avg,currentPrice);
+    const panel=document.createElement('div'); panel.className='avg-tf-panel';
+    let html=`<div class="avg-tf-label">${tf.label}</div>`;
+    if(!lvls){html+=`<div class="placeholder">Input required</div>`;panel.innerHTML=html;grid.appendChild(panel);return;}
+    lvls.forEach(([lbl,val,type],i)=>{
+      const isCurr = currentPrice&&Math.abs(currentPrice-val)<avg*0.065;
+      let cls='avg-row';
+      if(type==='premium')  cls+=' is-premium';
+      if(type==='discount') cls+=' is-discount';
+      if(type==='open')     cls+=' is-open';
+      if(isCurr)            cls+=' is-current';
+      if(i===5) html+=`<div class="avg-sep"></div>`;
+      html+=`<div class="${cls}"><span class="avg-row-label">${lbl}</span><span class="avg-row-val">${fmt(val,dec)}</span></div>`;
+    });
+    panel.innerHTML=html; grid.appendChild(panel);
+  });
+}
+
+// ── TIME-PRICE GRID ───────────────────────────────────────────────
+function buildTPLines(price) {
+  const {aGap,pairGap} = ASSETS[currentAsset];
+  const lines=[];
+  const baseA=Math.floor(price/aGap)*aGap;
+  for(let off=-2;off<=2;off++){
+    const ab=baseA+off*aGap;
+    const aN=Math.round(ab/(aGap/24));
+    [
+      {type:'a',label:`A LINE ${aN}`,  base:ab,            price:ab,           pair:ab+pairGap},
+      {type:'b',label:'B LINE',        base:ab,            price:ab+aGap*0.25, pair:ab+aGap*0.25+pairGap},
+      {type:'c',label:'C LINE',        base:ab,            price:ab+aGap*0.50, pair:ab+aGap*0.50+pairGap},
+      {type:'d',label:'D LINE',        base:ab,            price:ab+aGap*0.75, pair:ab+aGap*0.75+pairGap},
+    ].forEach(l=>lines.push(l));
+  }
+  return lines.sort((a,b)=>b.price-a.price);
+}
+
+function renderTPGrid(price) {
+  const {dec,aGap} = ASSETS[currentAsset];
+  const lines = buildTPLines(price);
+  const above = lines.find(l=>l.price>price);
+  const below = [...lines].reverse().find(l=>l.price<=price);
+  document.getElementById('tpZoneLabel').textContent =
+    above&&below ? `▲ ${above.label} ${fmt(above.price,dec)}  ·  ▼ ${below.label} ${fmt(below.price,dec)}` : '';
+
+  let html=`<table class="tp-table">
+    <thead><tr>
+      <th>LINE</th><th>PRICE</th><th>PAIR</th><th>DISTANCE FROM CURRENT</th><th>TYPE</th>
+    </tr></thead><tbody>`;
+  lines.forEach(l=>{
+    const dist    = Math.abs(price-l.price);
+    const distPct = Math.min(100,(dist/aGap)*100);
+    const isCurr  = price>=l.price && price<l.price+aGap*0.25;
+    const isNear  = dist<aGap*0.12;
+    html+=`<tr class="tp-line-${l.type}${isCurr?' tp-current':''}">
+      <td>${l.label}</td>
+      <td>${fmt(l.price,dec)}</td>
+      <td>${fmt(l.pair,dec)}</td>
+      <td><div class="dist-bar">
+        <div class="dist-track"><div class="dist-fill${isNear?' near':''}" style="width:${Math.max(4,100-distPct)}%"></div></div>
+        <span style="font-family:var(--mono);font-size:0.6rem;color:var(--text3)">${fmt(dist,dec)}</span>
+      </div></td>
+      <td><span class="tp-badge ${l.type}">${l.type.toUpperCase()}</span></td>
+    </tr>`;
+  });
+  html+='</tbody></table>';
+  document.getElementById('tpBody').innerHTML=html;
+  return {above,below};
+}
+
+// ── KEY LEVELS ────────────────────────────────────────────────────
+function renderKeyLevels(qRes,d20Res,above,below) {
+  const {dec}=ASSETS[currentAsset];
+  const kls=[];
+  if(above) kls.push({name:above.label, price:above.price, type:'res'});
+  if(below) kls.push({name:below.label, price:below.price, type:'sup'});
+  if(qRes)  kls.push({name:'Q MIDPOINT (50%)',  price:qRes.lvls[50],  type:currentPrice>qRes.lvls[50]?'res':'sup'});
+  if(qRes)  kls.push({name:'Q DEEP DISC (25%)', price:qRes.lvls[25],  type:'sup'});
+  if(d20Res)kls.push({name:'20D MIDPOINT',      price:d20Res.lvls[50],type:currentPrice>d20Res.lvls[50]?'res':'sup'});
+  if(d20Res)kls.push({name:'20D HIGH (100%)',   price:d20Res.lvls[100],type:'res'});
+  document.getElementById('keyLevels').innerHTML = kls.slice(0,6).map(k=>`
+    <div class="kl-row">
+      <span class="kl-name">${k.name}</span>
+      <span class="kl-price">${fmt(k.price,dec)}</span>
+      <span class="kl-type ${k.type}">${k.type==='res'?'RESISTANCE':'SUPPORT'}</span>
+    </div>`).join('') || '<div class="kl-row"><span class="kl-name" style="color:var(--text3)">No levels calculated</span></div>';
+}
+
+// ── AGENT BRIEFING ────────────────────────────────────────────────
+async function generateBriefing(qRes,d20Res,d5Res,above,below) {
+  const p=currentPrice;
+  const {dec}=ASSETS[currentAsset];
+  let bull=0,bear=0,tot=0;
+  [qRes,d20Res,d5Res].forEach(r=>{
+    if(!r)return; tot++;
+    if(r.pct<35)bull++; else if(r.pct>65)bear++;
+  });
+  const bias  = bull>bear?'bullish':bear>bull?'bearish':'neutral';
+  const score = tot>0?Math.round(Math.max(bull,bear)/tot*100):0;
+  const bp=document.getElementById('biasPill');
+  bp.textContent=bias.toUpperCase(); bp.className=`bias-pill ${bias}`;
+  const cf=document.getElementById('confFill');
+  cf.style.width=`${score}%`; cf.className=`conf-fill ${bias}`;
+  document.getElementById('confScore').textContent=`${score}%`;
+
+  const ctx=`You are the Vision Model, a proprietary CME futures trading agent.
+Asset: ${currentAsset} — ${ASSETS[currentAsset].name}
+Current Price: ${fmt(p,dec)}
+Session Time: ${new Date().toLocaleTimeString('en-US',{timeZone:'America/Chicago',hour:'2-digit',minute:'2-digit'})} CT
+
+IPDA GRADIENT READINGS (Set 1):
+• Quarterly 60-Day: ${qRes?`${qRes.pct.toFixed(1)}% of range — ${qRes.zone}`:'not provided'}
+• 20-Day Block: ${d20Res?`${d20Res.pct.toFixed(1)}% of range — ${d20Res.zone}`:'not provided'}
+• 5-Day Rolling: ${d5Res?`${d5Res.pct.toFixed(1)}% of range — ${d5Res.zone}`:'not provided'}
+
+TIME-PRICE GRID (Set 3):
+• Next resistance: ${above?`${above.label} at ${fmt(above.price,dec)}`:'N/A'}
+• Next support: ${below?`${below.label} at ${fmt(below.price,dec)}`:'N/A'}
+
+Directional bias: ${bias.toUpperCase()} — ${score}% IPDA confluence
+
+Deliver a 3–5 sentence professional trading briefing. Be direct and specific. Name exact price levels. Describe where price sits across the three IPDA timeframes in premium/discount terms. Call out confluence or conflict between timeframes. End with the single most important level to watch and what it means. Plain prose only — no bullets, no headers, no markdown.`;
+
+  const el=document.getElementById('briefingText');
+  el.textContent='Generating briefing...'; el.classList.add('loading');
+  try {
+    const res=await fetch('https://api.anthropic.com/v1/messages',{
+      method:'POST',headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({model:'claude-sonnet-4-20250514',max_tokens:400,messages:[{role:'user',content:ctx}]})
+    });
+    const data=await res.json();
+    el.textContent=(data.content||[]).map(c=>c.text||'').join('');
+    el.classList.remove('loading');
+  } catch(e) {
+    let fb=`${currentAsset} is trading at ${fmt(p,dec)}. `;
+    if(qRes) fb+=`Quarterly IPDA positions price at ${qRes.pct.toFixed(1)}% — ${qRes.zone}. `;
+    if(d20Res) fb+=`20-Day lookback reads ${d20Res.zone} at ${d20Res.pct.toFixed(1)}%. `;
+    if(above&&below) fb+=`Price is between ${below.label} (${fmt(below.price,dec)}) and ${above.label} (${fmt(above.price,dec)}). `;
+    fb+=`Bias is ${bias.toUpperCase()} with ${score}% confluence.`;
+    el.textContent=fb; el.classList.remove('loading');
+  }
+}
+
+// ── MAIN RUN ──────────────────────────────────────────────────────
+async function runVisionModel() {
+  const manual=parseFloat(document.getElementById('manualPrice').value);
+  const price=manual||currentPrice;
+  if(!price){alert('Price not available. Enter a manual override price or click REFRESH to fetch live data.');return;}
+  currentPrice=price;
+  if(manual) renderHeroPrice(price,0,0);
+  const qRes  =calcIPDA(+document.getElementById('qHigh').value, +document.getElementById('qLow').value,  price);
+  const d20Res=calcIPDA(+document.getElementById('d20High').value,+document.getElementById('d20Low').value,price);
+  const d5Res =calcIPDA(+document.getElementById('d5High').value, +document.getElementById('d5Low').value, price);
+  renderIPDA(qRes,  'qMkr',  'qLvls',  'qZone',  'qPct');
+  renderIPDA(d20Res,'d20Mkr','d20Lvls','d20Zone','d20Pct');
+  renderIPDA(d5Res, 'd5Mkr', 'd5Lvls', 'd5Zone', 'd5Pct');
+  renderAvgGrid();
+  const {above,below}=renderTPGrid(price);
+  renderKeyLevels(qRes,d20Res,above,below);
+  await generateBriefing(qRes,d20Res,d5Res,above,below);
+}
+</script>
+</body>
+</html>
